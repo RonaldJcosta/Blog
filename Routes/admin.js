@@ -3,7 +3,9 @@ const router = express.Router()
 const mongoose = require('mongoose')
 
 require('../Models/Categoria')
+require('../Models/Postagem')
 
+const Postagem = mongoose.model('postangens')
 const Categoria = mongoose.model('categorias')
 
 router.get('/', (req, res) => {
@@ -89,6 +91,70 @@ router.post('/categorias/edit', (req, res) => {
     }).catch(err => {
         req.flash('error_msg', 'Houve um erro ao editar a categoria')
     })
+})
+
+router.post('/categorias/deletar/:id', (req, res) => {
+    Categoria.findOneAndDelete({_id: req.body.id}).then(() => {
+        req.flash('success_msg', 'Post apagado com sucesso!');
+
+        res.redirect('/admin/categorias')
+    }).catch((err) => {
+        req.flash('error_msg', 'Houve um erro ao deletar o post');
+
+        res.redirect('/admin/categorias')
+    })
+})    
+
+router.get('/postagens', (req, res) => {
+
+    Postagem.find().lean().populate("categoria").sort({data: "desc"}).then((postagens) =>{
+        res.render('admin/postagens', {postagens: postagens})
+    }).catch(error => {
+        req.flash("eerror_msg", "Houve um erro ao listar as postagens")
+        res.redirect("/admin")
+    })
+
+    
+})
+
+router.get('/postagens/add', (req, res) => {
+
+    Categoria.find().lean().then(categorias => {
+        res.render('admin/addPostagem', {categorias: categorias})
+    }).catch(err => {
+        req.flash("error_msg", "Houve um erro ao carregar o formulário.")
+        res.redirect("/admin")
+    })
+    
+})
+
+router.post('/postagem/nova', (req, res) => {
+    let erros = []
+
+    if(req.body.categoria == '0'){
+        erros.push({texto: "Categoria inválida, registre uma categoria"})
+    }
+
+    if(erros.length > 0){
+        res.render("admin/addPostagem", {erros: erros})
+    } else {
+        const novaPostagem = {
+            titulo: req.body.titulo,
+            slug: req.body.slug,
+            descricao: req.body.descricao,
+            conteudo: req.body.conteudo,
+            categoria: req.body.categoria
+        }
+
+        new Postagem(novaPostagem).save().then(() => {
+            req.flash("success_msg", "Postagem criada com sucesso")
+            res.redirect("/admin/postagens")
+        }).catch((err) => {
+            req.flash("error_msg", "Houve um erro ao salvar a postagem")
+            res.redirect("/admin/postagens")
+        })
+
+    }
 })
 
 module.exports = router
